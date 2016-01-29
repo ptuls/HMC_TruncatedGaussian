@@ -1,4 +1,8 @@
-import numpy as np
+try:
+    import numpy as np
+except ImportError:
+    print("Requires numpy version 1.10.2 and above")
+
 import numpy.linalg as lin
 import sys
 
