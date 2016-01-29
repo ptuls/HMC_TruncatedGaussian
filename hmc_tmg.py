@@ -206,7 +206,7 @@ class HMCTruncGaussian(object):
 
             mu = lin.solve(R, lin.solve(R.transpose(), r))
             g = np.matrix(gc) + np.matrix(Fc)*mu
-            F = lin.solve(np.matrix(Fc), R)
+            F = lin.solve(R, np.matrix(Fc))
             initial_sample = initial - mu
             initial_sample = R*initial_sample
 
@@ -356,7 +356,7 @@ if __name__ == "__main__":
     # constraints
     F = np.identity(size)
     g = np.zeros((size,1))
-    print(tmg.generate_general_tmg(F, g, cov_mtx, mean, np.ones((size,1)), cov=True, samples=1))
+    print(tmg.generate_general_tmg(F, g, cov_mtx, mean, np.ones((size,1)), cov=False, samples=1))
 
 
 
