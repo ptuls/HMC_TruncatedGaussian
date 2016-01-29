@@ -311,8 +311,7 @@ class HMCTruncGaussian(object):
                     break
 
                 # update new velocity
-                reflected = F[j,:]*v
-                            # /Fsq[0,j]
+                reflected = F[j,:]*v/Fsq[0,j]
                 # print("before")
                 # print(initial_velocity)
                 # print(reflected)
@@ -357,7 +356,7 @@ if __name__ == "__main__":
     # constraints
     F = np.identity(size)
     g = np.zeros((size,1))
-    print(tmg.generate_general_tmg(F, g, cov_mtx, mean, np.ones((size,1)), samples=1))
+    print(tmg.generate_general_tmg(F, g, cov_mtx, mean, np.ones((size,1)), cov=True, samples=1))
 
 
 
