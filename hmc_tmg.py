@@ -17,6 +17,14 @@ EPS = 1e-11     # this determines the precision of how close we want to be to th
 
 
 class HMCTruncGaussian(object):
+    """
+    Hamiltonian Markov Chain (HMC) generation of multivariate truncated normal random variables. Exact expressions
+    are used in the generation. Based on Matlab code by Ari Pakman (https://github.com/aripakman/hmc-tmg).
+
+    References:
+    [1] Ari Pakman and Liam Paninski, "Exact Hamiltonian Monte Carlo for Truncated Multivariate Gaussians",
+        http://arxiv.org/abs/1208.4118
+    """
     def generate_simple_tmg(self, mean, std_dev, samples=1):
         """
         Generates samples of truncated Gaussian distributed random vectors with covariance matrix structure identity
@@ -165,15 +173,23 @@ class HMCTruncGaussian(object):
 
         Random vector length will be equal to the mean vector length, specified as a parameter.
 
-        Example usage:
-
-            >> mean = [0.1] * 5
-            >> std_dev = 1
-            >> print(HMCTruncGaussian().generate_general_tmg(mean, std_dev))
+        Example usage - generation of non-negative truncated normal random vectors of size 5, with identity
+        covariance matrix:
+            >> import numpy as np
+            >> size = 5
+            >> mean = [0.1] * size
+            >> cov_mtx = np.identity(size)
+            >> Fc = np.identity(size)
+            >> g = np.zeros((size,1))
+            >> initial = np.ones((size,1))
+            >> print(HMCTruncGaussian().generate_general_tmg(Fc, g, cov_mtx, mean, initial))
             [[1.5393077420852723, 0.83193549862758009, 0.17057082476061466, 0.35605405861148831, 0.54828265215645966]]
 
+        :param Fc: constraint matrix
+        :param g: constraint vector
         :param mean: mean vector of distribution (note: this is the mean after truncation of a normal distribution)
-        :param std_dev: standard deviation of distribution
+        :param cov_mtx: covariance matrix of distribution
+        :param initial: initial/starting point
         :param samples: number of samples to output (default=1).
         :return: list of samples
         """
@@ -213,8 +229,6 @@ class HMCTruncGaussian(object):
         dim = len(mu)     # dimension of mean vector; each sample must be of this dimension
 
         # define all vectors in column order; may change to list for output
-        # mu = mu.transpose()
-        # g = g.transpose()
         sample_matrix = []
 
         # more for debugging purposes
@@ -312,17 +326,7 @@ class HMCTruncGaussian(object):
 
                 # update new velocity
                 reflected = F[j,:]*v/Fsq[0,j]
-                # print("before")
-                # print(initial_velocity)
-                # print(reflected)
-                # for k in range(dim):
-                #     initial_velocity[k] = v[k] - 2*reflected*Ft[k,j]
-                # print v
-                # print Fsq[0,j]
-                # print(reflected[0])
-                # print(v[j])
                 initial_velocity = v - 2*reflected[0,0]*Ft[:,j]
-                # print(initial_velocity)
 
                 bounce_count += 1
 
