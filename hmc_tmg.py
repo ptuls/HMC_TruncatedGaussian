@@ -340,28 +340,3 @@ class HMCTruncGaussian(object):
             sample_matrix.append(sample[0])
 
         return sample_matrix
-
-
-
-if __name__ == "__main__":
-
-    tmg = HMCTruncGaussian()
-    # mean = [0.1, 0.2, 0.35, 0.62]
-
-    size = 5
-    mean = [0.1] * size
-    # print(mean)
-    std_deviation = 1
-    print(tmg.generate_simple_tmg(mean, std_deviation, samples=1))
-
-    # covariance matrix
-    cov_mtx = std_deviation**2 * np.identity(size)
-
-    # constraints
-    F = np.identity(size)
-    g = np.zeros((size,1))
-    print(tmg.generate_general_tmg(F, g, cov_mtx, mean, np.ones((size,1)), cov=False, samples=1))
-
-
-
-
