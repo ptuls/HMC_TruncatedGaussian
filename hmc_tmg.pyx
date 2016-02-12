@@ -28,19 +28,20 @@ References:
 
 # @cython.boundscheck(False)  # turn off bounds-checking for entire function
 # @cython.wraparound(False)
-def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
-                              double std_dev,
-                              int samples=1):
+def generate_simple_tmg(cnp.ndarray[dtype_t, ndim=2] mean,
+                            double std_dev,
+                            int samples=1):
     """
     Generates samples of truncated Gaussian distributed random vectors with covariance matrix structure identity
     matrix times std_dev**2. Random vector length will be equal to the mean vector length, specified as a parameter.
 
     Example usage:
 
-        >> mean = [0.1] * 5
+        >> import numpy as np
+        >> mean = np.matrix([0.1] * 5)
         >> std_dev = 1
-        >> print(HMCTruncGaussian().generate_simple_tmg(mean, std_dev))
-        [[1.5393077420852723, 0.83193549862758009, 0.17057082476061466, 0.35605405861148831, 0.54828265215645966]]
+        >> print(generate_simple_tmg(mean, std_dev))
+        [matrix([1.5393077420852723, 0.83193549862758009, 0.17057082476061466, 0.35605405861148831, 0.54828265215645966])]
 
     :param mean: mean vector of distribution (note: this is the mean after truncation of a normal distribution)
     :param std_dev: standard deviation of distribution
@@ -50,11 +51,18 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
 
     # output will be generated as a matrix of size |mean| by |samples|
     # convert all to numpy matrix for easier handling
-    dim = len(mean)     # dimension of mean vector; each sample must be of this dimension
+    dim = max(mean.shape[0], mean.shape[1])     # dimension of mean vector; each sample must be of this dimension
 
     # define all vectors in column order; may change to list for output
-    cdef cnp.ndarray[dtype_t, ndim=2] mu = np.matrix(mean).transpose()
-    if any(mu) < 0:
+    cdef cnp.ndarray[dtype_t, ndim=2] mu
+
+    # set everything to column vector order
+    if mean.shape[0] == dim:
+        mu = mean
+    else:
+        mu = np.matrix(mean).transpose()
+
+    if mu.any() < 0:
         print("Error: mean vector must be positive")
         return
 
@@ -69,7 +77,7 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
     sample_matrix = []
 
     # more for debugging purposes
-    if any(initial_sample + g) < 0:
+    if (initial_sample + g).any() < 0:
         print("Error: inconsistent initial condition")
         return
 
@@ -77,7 +85,7 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
     # for Cython we type everything if possible
     cdef cnp.ndarray[dtype_t, ndim=2] initial_velocity, x, a, b, phi, pn, t1, v, sample
     cdef double T
-    # indices: user Py_ssize_t
+    # indices: use Py_ssize_t
     cdef Py_ssize_t i, j, k
 
     for i in range(samples):
@@ -85,7 +93,6 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
         j = -1
         # use gauss because it's faster
         initial_velocity = np.matrix([gauss(0, 1) for _ in range(dim)]).transpose()
-        # print(initial_velocity)
         # initial_velocity = np.matrix('1.4090; 1.4172; 0.6715; -1.2075')
         # initial_velocity = np.matrix('-0.46510217; -0.34660608; -1.17232004; -1.89907886')
         # initial_velocity = np.matrix('0.38491682; 1.27530709; 0.7218227; -0.00850574; 0.22724687')
@@ -162,19 +169,19 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
                 if k != j:
                     initial_velocity[k] = v[k]
 
-        sample = std_dev*x + mu
-        sample = sample.transpose().tolist()
-        sample_matrix.append(sample[0])
+        sample = (std_dev*x + mu).transpose()
+        # sample = sample.transpose()
+        sample_matrix.append(sample)
 
     return sample_matrix
 
 # @cython.boundscheck(False)
 # @cython.wraparound(False)
-def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtype_t, ndim=2] gc,
-                               cnp.ndarray[dtype_t, ndim=2] M,  cnp.ndarray[dtype_t, ndim=2] mean_r,
-                               cnp.ndarray[dtype_t, ndim=2] initial,
-                               int samples=1,
-                               cov=True):
+def generate_general_tmg(cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtype_t, ndim=2] gc,
+                         cnp.ndarray[dtype_t, ndim=2] M,  cnp.ndarray[dtype_t, ndim=2] mean_r,
+                         cnp.ndarray[dtype_t, ndim=2] initial,
+                         int samples=1,
+                         cov=True):
     """
     Generates samples of truncated Gaussian distributed random vectors with general covariance matrix under
     constraint
@@ -192,7 +199,7 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtyp
         >> Fc = np.identity(size)
         >> g = np.zeros((size,1))
         >> initial = np.ones((size,1))
-        >> print(HMCTruncGaussian().generate_general_tmg(Fc, g, cov_mtx, mean, initial))
+        >> print(generate_general_tmg(Fc, g, cov_mtx, mean, initial))
         [[1.5393077420852723, 0.83193549862758009, 0.17057082476061466, 0.35605405861148831, 0.54828265215645966]]
 
     :param Fc: constraint matrix
@@ -238,13 +245,13 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtyp
         initial_sample = initial - mu
         initial_sample = R*initial_sample
 
-    dim = len(mu)     # dimension of mean vector; each sample must be of this dimension
+    dim = max(mu.shape[0], mu.shape[1])     # dimension of mean vector; each sample must be of this dimension
 
     # define all vectors in column order; may change to list for output
     sample_matrix = []
 
     # more for debugging purposes
-    if any(F*initial_sample + g) < 0:
+    if (F*initial_sample + g).any() < 0:
         print("Error: inconsistent initial condition")
         return
 
@@ -259,7 +266,6 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtyp
     Ft = F.transpose()
     # generate samples
     for i in range(samples):
-        print("General HMC")
         stop = False
         j = -1
         # use gauss because it's faster
@@ -349,10 +355,8 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtyp
         else:
             sample = lin.solve(R, x) + mu
 
-        sample = sample.transpose().tolist()
+        sample = sample.transpose()
         sample_matrix.append(sample[0])
 
     return sample_matrix
-
-
 
