@@ -12,18 +12,8 @@ ctypedef cnp.float64_t dtype_t
 import numpy.linalg as lin
 
 
-cdef extern from "math.h":
-    double log(double x)
-cdef extern from "math.h":
-    double exp(double x)
-cdef extern from "math.h":
-    double sqrt(double x)
-cdef extern from "math.h":
-    double PI
-
-
 __author__ = 'Paul Tune'
-__date__ = '21 Jan 2016'
+__date__ = '12 Feb 2016'
 
 cdef double EPS = 1e-11
 
@@ -85,9 +75,10 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
 
     # generate samples
     # for Cython we type everything if possible
-    cdef cnp.ndarray[dtype_t, ndim=2] initial_velocity, x, a, b, phi, pn, t1, v
-    cdef int j
+    cdef cnp.ndarray[dtype_t, ndim=2] initial_velocity, x, a, b, phi, pn, t1, v, sample
     cdef double T
+    # indices: user Py_ssize_t
+    cdef Py_ssize_t i, j, k
 
     for i in range(samples):
         stop = False
@@ -179,9 +170,9 @@ def generate_simple_tmg(self, cnp.ndarray[dtype_t, ndim = 2] mean,
 
 # @cython.boundscheck(False)
 # @cython.wraparound(False)
-def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim = 2] Fc, cnp.ndarray[dtype_t, ndim = 2] gc,
-                               cnp.ndarray[dtype_t, ndim = 2] M, cnp.ndarray[dtype_t, ndim = 2] mean_r,
-                               cnp.ndarray[dtype_t, ndim = 2] initial,
+def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim=2] Fc, cnp.ndarray[dtype_t, ndim=2] gc,
+                               cnp.ndarray[dtype_t, ndim=2] M,  cnp.ndarray[dtype_t, ndim=2] mean_r,
+                               cnp.ndarray[dtype_t, ndim=2] initial,
                                int samples=1,
                                cov=True):
     """
@@ -218,12 +209,14 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim = 2] Fc, cnp.ndarray[dt
         print("Error: constraint dimensions do not match")
         return
 
+    cdef cnp.ndarray[dtype_t, ndim=2] R
     try:
         R = cholesky(M)
     except lin.LinAlgError:
         print("Error: covariance or precision matrix is not positive definite")
         return
 
+    cdef cnp.ndarray[dtype_t, ndim=2] mu, r, g, F, initial_sample
     # using covariance matrix
     if cov:
         mu = np.matrix(mean_r)
@@ -255,8 +248,11 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim = 2] Fc, cnp.ndarray[dt
         print("Error: inconsistent initial condition")
         return
 
-    # count total number of times boundary has been touched
-    bounce_count = 0
+    # for Cython we type everything if possible
+    cdef cnp.ndarray[dtype_t, ndim=2] Fsq, Ft, initial_velocity, x, a, b, phi, pn, t1, v, reflected, sample
+    cdef double T
+    # indices: user Py_ssize_t
+    cdef Py_ssize_t i, j, k
 
     # squared Euclidean norm of constraint matrix columns
     Fsq = np.sum(np.square(F), axis=0)
@@ -346,8 +342,6 @@ def generate_general_tmg(self, cnp.ndarray[dtype_t, ndim = 2] Fc, cnp.ndarray[dt
             # update new velocity
             reflected = F[j,:]*v/Fsq[0,j]
             initial_velocity = v - 2*reflected[0,0]*Ft[:,j]
-
-            bounce_count += 1
 
         # need to transform back to unwhitened frame
         if cov:
